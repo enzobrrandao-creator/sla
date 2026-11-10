@@ -1,0 +1,13 @@
+modLoader="javafml"
+loaderVersion="[0,)"
+license="MIT"
+
+[[mods]]
+modId="veinminer_dani"
+version="1.0.0"
+displayName="VeinMiner (Dani)"
+authors="Dani"
+description='''
+Agache (Shift) e quebre um minério ou tronco para minerar o veio inteiro / derrubar a árvore toda.
+Respeita Fortuna, Toque Suave e a durabilidade da ferramenta.
+'''
