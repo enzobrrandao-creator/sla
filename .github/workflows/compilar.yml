@@ -1,0 +1,72 @@
+name: Compilar mod
+
+on:
+  workflow_dispatch:
+    inputs:
+      minecraft_version:
+        description: "Versão do Minecraft (ex.: 26.3)"
+        required: true
+        default: "26.3"
+      forge_version:
+        description: "Versão do Forge (ex.: 66.1.5)"
+        required: true
+        default: "66.1.5"
+      java_version:
+        description: "Versão do Java (25 para Minecraft 26.x)"
+        required: true
+        default: "25"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o código do mod
+        uses: actions/checkout@v4
+
+      - name: Instalar o Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ inputs.java_version }}
+
+      - name: Baixar o kit oficial do Forge (MDK)
+        run: |
+          V="${{ inputs.minecraft_version }}-${{ inputs.forge_version }}"
+          URL="https://maven.minecraftforge.net/net/minecraftforge/forge/$V/forge-$V-mdk.zip"
+          echo "Baixando $URL"
+          curl -fL -o mdk.zip "$URL"
+          mkdir mdk_raw
+          unzip -q mdk.zip -d mdk_raw
+          DIR=$(dirname "$(find mdk_raw -name gradlew | head -1)")
+          mv "$DIR" mdk
+
+      - name: Colocar o código do mod dentro do MDK
+        run: |
+          rm -rf mdk/src/main/java
+          mkdir -p mdk/src/main/java mdk/src/main/resources/META-INF
+          cp -r src/main/java/. mdk/src/main/java/
+          find mdk/src -name mods.toml -delete
+          cp src/main/resources/META-INF/mods.toml mdk/src/main/resources/META-INF/mods.toml
+          cd mdk
+          set_prop() { if grep -q "^$1=" gradle.properties; then sed -i "s|^$1=.*|$1=$2|" gradle.properties; else echo "$1=$2" >> gradle.properties; fi; }
+          set_prop mod_id veinminer_dani
+          set_prop mod_name "VeinMiner (Dani)"
+          set_prop mod_version 1.0.0
+          set_prop mod_group_id com.dani.veinminer
+          set_prop mod_license MIT
+          set_prop mod_authors Dani
+
+      - name: Compilar
+        working-directory: mdk
+        run: |
+          chmod +x gradlew
+          ./gradlew build --no-daemon --stacktrace
+
+      - name: Disponibilizar o .jar para download
+        uses: actions/upload-artifact@v4
+        with:
+          name: veinminer-dani-forge-${{ inputs.minecraft_version }}
+          path: |
+            mdk/build/libs/*.jar
+            !mdk/build/libs/*-sources.jar
+          
